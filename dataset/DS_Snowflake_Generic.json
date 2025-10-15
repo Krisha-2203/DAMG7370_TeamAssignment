@@ -1,0 +1,40 @@
+{
+	"name": "DS_Snowflake_Generic",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Snowflake1",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"AccountName": "IKTVEWP-ZPA04231",
+				"Database": "MEDIA_DB",
+				"Warehouse": "MEDIA_WH",
+				"Username": "MEDIA_USER",
+				"Role": "MEDIA_ROLE",
+				"Host": "IKTVEWP-ZPA04231.snowflakecomputing.com"
+			}
+		},
+		"parameters": {
+			"TableName": {
+				"type": "string"
+			},
+			"SchemaName": {
+				"type": "string",
+				"defaultValue": "PET_LICENSE"
+			}
+		},
+		"annotations": [],
+		"type": "SnowflakeV2Table",
+		"schema": [],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().SchemaName",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().TableName",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

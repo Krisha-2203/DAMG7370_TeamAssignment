@@ -1,0 +1,146 @@
+{
+	"name": "STG_PETLICENSE",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "SnowflakeV2Sink",
+						"importSettings": {
+							"type": "SnowflakeImportCopyCommand",
+							"additionalCopyOptions": {
+								"ON_ERROR": "CONTINUE"
+							},
+							"additionalFormatOptions": {
+								"ERROR_ON_COLUMN_COUNT_MISMATCH": "FALSE"
+							}
+						}
+					},
+					"enableStaging": true,
+					"stagingSettings": {
+						"linkedServiceName": {
+							"referenceName": "AzureBlobStorage1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "License Issue Date",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LICENSEID",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "License Number",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LICENSEISSUEDDATE",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "Animal's Name",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SPECIESNAME",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Species",
+									"type": "String"
+								},
+								"sink": {
+									"name": "PRIMARYBREED",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Primary Breed",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SECONDARYBREED",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Secondary Breed",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ZIPCODE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ZIP Code",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CITY",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_CSV_PetLicense",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_Snowflake_Generic",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": "STG_PETLICENSE",
+							"SchemaName": "PET_LICENSE"
+						}
+					}
+				]
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2025-10-15T16:06:48Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

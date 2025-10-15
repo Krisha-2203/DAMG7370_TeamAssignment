@@ -1,0 +1,97 @@
+{
+	"name": "STG_LOCATION",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ExcelSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "SnowflakeV2Sink",
+						"importSettings": {
+							"type": "SnowflakeImportCopyCommand"
+						}
+					},
+					"enableStaging": true,
+					"stagingSettings": {
+						"linkedServiceName": {
+							"referenceName": "AzureBlobStorage1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "zipcode",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ZIPCODE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "city",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CITY_NAME",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "state_abbr",
+									"type": "String"
+								},
+								"sink": {
+									"name": "STATE_ABBR",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_EXCEL_geo",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_Snowflake_Generic",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": "STG_LOCATION",
+							"SchemaName": "PET_LICENSE"
+						}
+					}
+				]
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2025-10-15T16:06:48Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

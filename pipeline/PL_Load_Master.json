@@ -1,0 +1,136 @@
+{
+	"name": "PL_Load_Master",
+	"properties": {
+		"activities": [
+			{
+				"name": "Run_CSV_to_Parquet",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_Load_CSV_to_Parquet",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Run_Excel_to_Parquet",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Run_CSV_to_Parquet",
+						"dependencyConditions": [
+							"Skipped"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "PL_Load_Excel_to_Parquet",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Run_Stage_PetLicense",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Run_Excel_to_Parquet",
+						"dependencyConditions": [
+							"Skipped"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "STG_PETLICENSE",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Run_Stage_Location",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Run_Stage_PetLicense",
+						"dependencyConditions": [
+							"Skipped"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "STG_LOCATION",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "SQL_LOAD_DIMFACT",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Run_Stage_Location",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "Snowflake1",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"AccountName": "IKTVEWP-ZPA04231",
+						"Database": "MEDIA_DB",
+						"Warehouse": "MEDIA_WH",
+						"Username": "MEDIA_USER",
+						"Role": "MEDIA_ROLE",
+						"Host": "IKTVEWP-ZPA04231.snowflakecomputing.com"
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "--script(s) activity to load data from stage to facts and dimensions\nUSE ROLE MEDIA_ROLE;\nUSE WAREHOUSE MEDIA_WH;\nUSE DATABASE MEDIA_DB;\nUSE SCHEMA PET_LICENSE;\n\n-- Load DATE_DIM\nINSERT INTO DATE_DIM (DATE_KEY, FULL_DATE, YEAR_NUM, QUARTER_NUM, MONTH_NUM, MONTH_NAME, DAY_OF_MONTH)\nSELECT \n    ROW_NUMBER() OVER (ORDER BY DISTINCT_DATE) AS DATE_KEY,\n    DISTINCT_DATE AS FULL_DATE,\n    YEAR(DISTINCT_DATE) AS YEAR_NUM,\n    QUARTER(DISTINCT_DATE) AS QUARTER_NUM,\n    MONTH(DISTINCT_DATE) AS MONTH_NUM,\n    TO_CHAR(DISTINCT_DATE, 'Month') AS MONTH_NAME,\n    DAY(DISTINCT_DATE) AS DAY_OF_MONTH\nFROM (\n    SELECT DISTINCT LICENSEISSUEDDATE AS DISTINCT_DATE\n    FROM STG_PETLICENSE\n    WHERE LICENSEISSUEDDATE IS NOT NULL\n);\n\n-- Load LOCATION_DIM\nINSERT INTO LOCATION_DIM (LOCATION_KEY, ZIP_CODE, CITY_NAME, STATE_ABBR)\nSELECT \n    ROW_NUMBER() OVER (ORDER BY ZIPCODE) AS LOCATION_KEY,\n    ZIPCODE,\n    CITY_NAME,\n    STATE_ABBR\nFROM (\n    SELECT DISTINCT ZIPCODE, CITY_NAME, STATE_ABBR\n    FROM STG_LOCATION\n    WHERE ZIPCODE IS NOT NULL\n);\n\n-- Load BREED_DIM\nINSERT INTO BREED_DIM (BREED_KEY, SPECIES_NAME, PRIMARY_BREED, SECONDARY_BREED)\nSELECT \n    ROW_NUMBER() OVER (ORDER BY SPECIESNAME, PRIMARYBREED, SECONDARYBREED) AS BREED_KEY,\n    SPECIESNAME,\n    PRIMARYBREED,\n    SECONDARYBREED\nFROM (\n    SELECT DISTINCT SPECIESNAME, PRIMARYBREED, SECONDARYBREED\n    FROM STG_PETLICENSE\n);\n\n-- Load FACT_PETLICENSE\nINSERT INTO FACT_PETLICENSE (LICENSE_ID, ISSUE_DATE, DATE_KEY, BREED_KEY, LOCATION_KEY)\nSELECT \n    S.LICENSEID,\n    S.LICENSEISSUEDDATE,\n    D.DATE_KEY,\n    B.BREED_KEY,\n    L.LOCATION_KEY\nFROM STG_PETLICENSE S\nLEFT JOIN DATE_DIM D \n    ON S.LICENSEISSUEDDATE = D.FULL_DATE\nLEFT JOIN BREED_DIM B \n    ON S.SPECIESNAME = B.SPECIES_NAME\n    AND S.PRIMARYBREED = B.PRIMARY_BREED\n    AND (S.SECONDARYBREED = B.SECONDARY_BREED OR (S.SECONDARYBREED IS NULL AND B.SECONDARY_BREED IS NULL))\nLEFT JOIN LOCATION_DIM L \n    ON S.ZIPCODE = L.ZIP_CODE\n    OR S.CITY = L.CITY_NAME;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2025-10-15T16:27:28Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
