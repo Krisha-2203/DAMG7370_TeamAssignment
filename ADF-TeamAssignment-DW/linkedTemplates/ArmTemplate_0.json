@@ -1,0 +1,991 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "ADF-TeamAssignment-DW"
+		},
+		"Snowflake1_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'Snowflake1'"
+		},
+		"AzureBlobStorage1_sasUri": {
+			"type": "secureString",
+			"metadata": "Secure string for 'sasUri' of 'AzureBlobStorage1'"
+		},
+		"Snowflake1_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "@{linkedService().Database}"
+		},
+		"Snowflake1_properties_typeProperties_role": {
+			"type": "string",
+			"defaultValue": "@{linkedService().Role}"
+		},
+		"Snowflake1_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "@{linkedService().Host}"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBlobStorage1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"sasUri": "[parameters('AzureBlobStorage1_sasUri')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Snowflake1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"AccountName": {
+						"type": "string",
+						"defaultValue": "IKTVEWP-ZPA04231"
+					},
+					"Database": {
+						"type": "string",
+						"defaultValue": "MEDIA_DB"
+					},
+					"Warehouse": {
+						"type": "string",
+						"defaultValue": "MEDIA_WH"
+					},
+					"Username": {
+						"type": "string",
+						"defaultValue": "MEDIA_USER"
+					},
+					"Role": {
+						"type": "string",
+						"defaultValue": "MEDIA_ROLE"
+					},
+					"Host": {
+						"type": "string",
+						"defaultValue": "IKTVEWP-ZPA04231.snowflakecomputing.com"
+					}
+				},
+				"annotations": [],
+				"type": "SnowflakeV2",
+				"typeProperties": {
+					"authenticationType": "Basic",
+					"accountIdentifier": "@{linkedService().AccountName}",
+					"user": "@{linkedService().Username}",
+					"database": "[parameters('Snowflake1_properties_typeProperties_database')]",
+					"warehouse": "@{linkedService().Warehouse}",
+					"role": "[parameters('Snowflake1_properties_typeProperties_role')]",
+					"host": "[parameters('Snowflake1_properties_typeProperties_host')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('Snowflake1_password')]"
+					}
+				},
+				"version": "1.1"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_to_Parquet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "pet_license.parquet",
+						"folderPath": "parquet/pet_license",
+						"container": "petlicense"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_CSV_PetLicense')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "Seattle_Pet_Licenses_20251013.csv",
+						"container": "petlicense"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_EXCEL_geo')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "in",
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "geo-data.xlsx",
+						"container": "petlicense"
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": [
+					{
+						"name": "state_fips",
+						"type": "String"
+					},
+					{
+						"name": "state",
+						"type": "String"
+					},
+					{
+						"name": "state_abbr",
+						"type": "String"
+					},
+					{
+						"name": "zipcode",
+						"type": "String"
+					},
+					{
+						"name": "county",
+						"type": "String"
+					},
+					{
+						"name": "city",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_Snowflake_Generic')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Snowflake1",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"AccountName": "IKTVEWP-ZPA04231",
+						"Database": "MEDIA_DB",
+						"Warehouse": "MEDIA_WH",
+						"Username": "MEDIA_USER",
+						"Role": "MEDIA_ROLE",
+						"Host": "IKTVEWP-ZPA04231.snowflakecomputing.com"
+					}
+				},
+				"parameters": {
+					"TableName": {
+						"type": "string"
+					},
+					"SchemaName": {
+						"type": "string",
+						"defaultValue": "PET_LICENSE"
+					}
+				},
+				"annotations": [],
+				"type": "SnowflakeV2Table",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SchemaName",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Snowflake1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EXCEL_to_Parquet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "geo_data.parquet",
+						"folderPath": "parquet/geo",
+						"container": "petlicense"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Load_CSV_to_Parquet')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy_CSV_to_Parquet",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "License Issue Date",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "License_Issue_Date",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "License Number",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "License_Number",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "Animal's Name",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Animal_Name",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "Species",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Species",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "Primary Breed",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Primary_Breed",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "Secondary Breed",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Secondary_Breed",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "ZIP Code",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ZIP_Code",
+											"physicalType": "UTF8"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_CSV_PetLicense",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CSV_to_Parquet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-10-15T15:36:29Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_PetLicense')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_to_Parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Load_Excel_to_Parquet')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "state_fips",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "state_fips",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "state",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "state",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "state_abbr",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "state_abbr",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "zipcode",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "zipcode",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "county",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "county",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									},
+									{
+										"source": {
+											"name": "city",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "city",
+											"type": "String",
+											"physicalType": "UTF8"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_EXCEL_geo",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "EXCEL_to_Parquet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-10-15T22:47:10Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_EXCEL_geo')]",
+				"[concat(variables('factoryId'), '/datasets/EXCEL_to_Parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/STG_LOCATION')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "SnowflakeV2Sink",
+								"importSettings": {
+									"type": "SnowflakeImportCopyCommand"
+								}
+							},
+							"enableStaging": true,
+							"stagingSettings": {
+								"linkedServiceName": {
+									"referenceName": "AzureBlobStorage1",
+									"type": "LinkedServiceReference"
+								}
+							},
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "zipcode",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ZIPCODE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "city",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CITY_NAME",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "state_abbr",
+											"type": "String"
+										},
+										"sink": {
+											"name": "STATE_ABBR",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_EXCEL_geo",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_Snowflake_Generic",
+								"type": "DatasetReference",
+								"parameters": {
+									"TableName": "STG_LOCATION",
+									"SchemaName": "PET_LICENSE"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-10-15T16:06:48Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_EXCEL_geo')]",
+				"[concat(variables('factoryId'), '/datasets/DS_Snowflake_Generic')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/STG_PETLICENSE')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "SnowflakeV2Sink",
+								"importSettings": {
+									"type": "SnowflakeImportCopyCommand",
+									"additionalCopyOptions": {
+										"ON_ERROR": "CONTINUE"
+									},
+									"additionalFormatOptions": {
+										"ERROR_ON_COLUMN_COUNT_MISMATCH": "FALSE"
+									}
+								}
+							},
+							"enableStaging": true,
+							"stagingSettings": {
+								"linkedServiceName": {
+									"referenceName": "AzureBlobStorage1",
+									"type": "LinkedServiceReference"
+								}
+							},
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "License Issue Date",
+											"type": "String"
+										},
+										"sink": {
+											"name": "LICENSEID",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "License Number",
+											"type": "String"
+										},
+										"sink": {
+											"name": "LICENSEISSUEDDATE",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "Animal's Name",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SPECIESNAME",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Species",
+											"type": "String"
+										},
+										"sink": {
+											"name": "PRIMARYBREED",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Primary Breed",
+											"type": "String"
+										},
+										"sink": {
+											"name": "SECONDARYBREED",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Secondary Breed",
+											"type": "String"
+										},
+										"sink": {
+											"name": "ZIPCODE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "ZIP Code",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CITY",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_CSV_PetLicense",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_Snowflake_Generic",
+								"type": "DatasetReference",
+								"parameters": {
+									"TableName": "STG_PETLICENSE",
+									"SchemaName": "PET_LICENSE"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-10-15T16:06:48Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_PetLicense')]",
+				"[concat(variables('factoryId'), '/datasets/DS_Snowflake_Generic')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Load_Master')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Run_CSV_to_Parquet",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_Load_CSV_to_Parquet",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Run_Excel_to_Parquet",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Run_CSV_to_Parquet",
+								"dependencyConditions": [
+									"Skipped"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_Load_Excel_to_Parquet",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Run_Stage_PetLicense",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Run_Excel_to_Parquet",
+								"dependencyConditions": [
+									"Skipped"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "STG_PETLICENSE",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Run_Stage_Location",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Run_Stage_PetLicense",
+								"dependencyConditions": [
+									"Skipped"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "STG_LOCATION",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "SQL_LOAD_DIMFACT",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Run_Stage_Location",
+								"dependencyConditions": [
+									"Skipped"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "Snowflake1",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"AccountName": "IKTVEWP-ZPA04231",
+								"Database": "MEDIA_DB",
+								"Warehouse": "MEDIA_WH",
+								"Username": "MEDIA_USER",
+								"Role": "MEDIA_ROLE",
+								"Host": "IKTVEWP-ZPA04231.snowflakecomputing.com"
+							}
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "--script(s) activity to load data from stage to facts and dimensions\nUSE ROLE MEDIA_ROLE;\nUSE WAREHOUSE MEDIA_WH;\nUSE DATABASE MEDIA_DB;\nUSE SCHEMA PET_LICENSE;\n\n-- Load DATE_DIM\nINSERT INTO DATE_DIM (DATE_KEY, FULL_DATE, YEAR_NUM, QUARTER_NUM, MONTH_NUM, MONTH_NAME, DAY_OF_MONTH)\nSELECT \n    ROW_NUMBER() OVER (ORDER BY DISTINCT_DATE) AS DATE_KEY,\n    DISTINCT_DATE AS FULL_DATE,\n    YEAR(DISTINCT_DATE) AS YEAR_NUM,\n    QUARTER(DISTINCT_DATE) AS QUARTER_NUM,\n    MONTH(DISTINCT_DATE) AS MONTH_NUM,\n    TO_CHAR(DISTINCT_DATE, 'Month') AS MONTH_NAME,\n    DAY(DISTINCT_DATE) AS DAY_OF_MONTH\nFROM (\n    SELECT DISTINCT LICENSEISSUEDDATE AS DISTINCT_DATE\n    FROM STG_PETLICENSE\n    WHERE LICENSEISSUEDDATE IS NOT NULL\n);\n\n-- Load LOCATION_DIM\nINSERT INTO LOCATION_DIM (LOCATION_KEY, ZIP_CODE, CITY_NAME, STATE_ABBR)\nSELECT \n    ROW_NUMBER() OVER (ORDER BY ZIPCODE) AS LOCATION_KEY,\n    ZIPCODE,\n    CITY_NAME,\n    STATE_ABBR\nFROM (\n    SELECT DISTINCT ZIPCODE, CITY_NAME, STATE_ABBR\n    FROM STG_LOCATION\n    WHERE ZIPCODE IS NOT NULL\n);\n\n-- Load BREED_DIM\nINSERT INTO BREED_DIM (BREED_KEY, SPECIES_NAME, PRIMARY_BREED, SECONDARY_BREED)\nSELECT \n    ROW_NUMBER() OVER (ORDER BY SPECIESNAME, PRIMARYBREED, SECONDARYBREED) AS BREED_KEY,\n    SPECIESNAME,\n    PRIMARYBREED,\n    SECONDARYBREED\nFROM (\n    SELECT DISTINCT SPECIESNAME, PRIMARYBREED, SECONDARYBREED\n    FROM STG_PETLICENSE\n);\n\n-- Load FACT_PETLICENSE\nINSERT INTO FACT_PETLICENSE (LICENSE_ID, ISSUE_DATE, DATE_KEY, BREED_KEY, LOCATION_KEY)\nSELECT \n    S.LICENSEID,\n    S.LICENSEISSUEDDATE,\n    D.DATE_KEY,\n    B.BREED_KEY,\n    L.LOCATION_KEY\nFROM STG_PETLICENSE S\nLEFT JOIN DATE_DIM D \n    ON S.LICENSEISSUEDDATE = D.FULL_DATE\nLEFT JOIN BREED_DIM B \n    ON S.SPECIESNAME = B.SPECIES_NAME\n    AND S.PRIMARYBREED = B.PRIMARY_BREED\n    AND (S.SECONDARYBREED = B.SECONDARY_BREED OR (S.SECONDARYBREED IS NULL AND B.SECONDARY_BREED IS NULL))\nLEFT JOIN LOCATION_DIM L \n    ON S.ZIPCODE = L.ZIP_CODE\n    OR S.CITY = L.CITY_NAME;"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-10-15T22:57:54Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_Load_CSV_to_Parquet')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_Load_Excel_to_Parquet')]",
+				"[concat(variables('factoryId'), '/pipelines/STG_PETLICENSE')]",
+				"[concat(variables('factoryId'), '/pipelines/STG_LOCATION')]",
+				"[concat(variables('factoryId'), '/linkedServices/Snowflake1')]"
+			]
+		}
+	]
+}
