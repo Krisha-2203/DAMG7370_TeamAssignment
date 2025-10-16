@@ -94,7 +94,7 @@
 					{
 						"activity": "Run_Stage_Location",
 						"dependencyConditions": [
-							"Succeeded"
+							"Skipped"
 						]
 					}
 				],
@@ -130,7 +130,7 @@
 			}
 		],
 		"annotations": [],
-		"lastPublishTime": "2025-10-15T16:27:28Z"
+		"lastPublishTime": "2025-10-15T22:57:54Z"
 	},
 	"type": "Microsoft.DataFactory/factories/pipelines"
 }
